@@ -15,7 +15,7 @@ export interface NextFetchReqConfig {
 
 export interface ApiConstructor {
   baseUrl: string;
-  config?: Omit<RequestInit, "method">;
+  initConfig?: Omit<RequestInit, "method">;
 }
 
 export interface RequestParams<T extends object = {}>

@@ -7,13 +7,13 @@ import {
 import buildQueryString from "./utils";
 
 export default class Api {
-  private readonly baseError: string = "HTTP error!";
+  private readonly baseErrorMessage: string = "HTTP error!";
   private readonly baseUrl: string;
-  private readonly config: Omit<IRequestInit, "body"> = {};
+  private readonly initConfig: Omit<IRequestInit, "body"> = {};
 
-  constructor({ baseUrl, config }: ApiConstructor) {
+  constructor({ baseUrl, initConfig }: ApiConstructor) {
     this.baseUrl = baseUrl;
-    if (config) this.config = config;
+    if (initConfig) this.initConfig = initConfig;
   }
 
   private formatUrl(url: string) {
@@ -28,7 +28,7 @@ export default class Api {
 
   private async handleError(response: Response): Promise<never> {
     const error = await response.json();
-    let errorString = `${this.baseError} status:${response.status}`;
+    let errorString = `${this.baseErrorMessage} status:${response.status}`;
     if (error.error && error.error.message)
       errorString += ` ${error.error.message}`;
     else if (error.message) errorString += ` ${error.message}`;
@@ -47,13 +47,13 @@ export default class Api {
     >
   ) {
     return fetch(url, {
-      ...this.config,
+      ...this.initConfig,
       ...config,
       headers: {
         ...(config.body instanceof FormData
           ? {}
           : { "Content-Type": "application/json" }),
-        ...this.config?.headers,
+        ...this.initConfig?.headers,
         ...config?.headers,
       },
     });
