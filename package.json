@@ -1,5 +1,5 @@
 {
-  "name": "@vnko/next-fetch",
+  "name": "@andreyvalenko/next-fetch",
   "version": "1.0.0",
   "description": "A simple npm package built with TypeScript",
   "main": "dist/index.js",
