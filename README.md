@@ -1,4 +1,4 @@
-# Api Fetch Wrapper
+# Next Api Fetch
 
 A lightweight and flexible TypeScript API wrapper around the native `fetch` function, with support for:
 
