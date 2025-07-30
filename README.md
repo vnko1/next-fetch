@@ -13,7 +13,7 @@ A lightweight and flexible TypeScript API wrapper around the native `fetch` func
 ## 📦 Installation
 
 ```bash
-npm install your-package-name
+npm install @andreyvalenko/next-fetch
 ```
 
 ## Usage:
