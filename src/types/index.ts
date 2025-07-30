@@ -13,9 +13,8 @@ export interface NextFetchReqConfig {
   tags?: string[];
 }
 
-export interface ApiConstructor {
+export interface ApiConstructor extends Omit<RequestInit, "method"> {
   baseUrl: string;
-  initConfig?: Omit<RequestInit, "method">;
 }
 
 export interface RequestParams<T extends object = {}>

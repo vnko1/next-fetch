@@ -11,7 +11,7 @@ export default class Api {
   private readonly baseUrl: string;
   private readonly initConfig: Omit<IRequestInit, "body"> = {};
 
-  constructor({ baseUrl, initConfig }: ApiConstructor) {
+  constructor({ baseUrl, ...initConfig }: ApiConstructor) {
     this.baseUrl = baseUrl;
     if (initConfig) this.initConfig = initConfig;
   }
