@@ -18,11 +18,14 @@ npm install your-package-name
 
 ## Structure
 
+```bash
 src/
 ├── api/
 │ ├── index.ts // API class
 │ ├── utils.ts // Query string builder
 │ └── types.ts // QueryParams type
+
+```
 
 ## Usage:
 
