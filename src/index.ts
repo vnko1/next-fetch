@@ -1,31 +1,15 @@
-import { QueryParams } from "./types";
+import {
+  ApiConstructor,
+  IRequestInit,
+  QueryParams,
+  RequestParams,
+} from "./types";
 import buildQueryString from "./utils";
-
-interface NextFetchReqConfig {
-  revalidate: false | 0 | number;
-  tags: string[];
-}
-
-interface ApiConstructor {
-  baseUrl: string;
-  config?: Omit<RequestInit, "method">;
-}
-
-interface RequestParams<T extends object = {}>
-  extends Pick<RequestInit, "cache" | "headers"> {
-  body: T;
-  params?: QueryParams;
-  next?: NextFetchReqConfig;
-}
-
-interface IRequestInit extends RequestInit {
-  next?: NextFetchReqConfig;
-}
 
 export default class Api {
   private readonly baseError: string = "HTTP error!";
   private readonly baseUrl: string;
-  private readonly config: RequestInit = {};
+  private readonly config: Omit<IRequestInit, "body"> = {};
 
   constructor({ baseUrl, config }: ApiConstructor) {
     this.baseUrl = baseUrl;
@@ -51,6 +35,10 @@ export default class Api {
     throw new Error(errorString);
   }
 
+  private formatBody(body: unknown) {
+    return body instanceof FormData ? body : JSON.stringify(body);
+  }
+
   private request(
     url: string,
     config: Pick<
@@ -62,7 +50,9 @@ export default class Api {
       ...this.config,
       ...config,
       headers: {
-        "Content-Type": "application/json",
+        ...(config.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
         ...this.config?.headers,
         ...config?.headers,
       },
@@ -95,9 +85,60 @@ export default class Api {
       {
         ...config,
         method: "POST",
-        body: JSON.stringify(body),
+        body: this.formatBody(body),
       }
     );
+    if (!response.ok) await this.handleError(response);
+
+    return response.json();
+  }
+
+  public async put<T, K extends object>(
+    url: string,
+    { body, params, ...config }: RequestParams<K>
+  ): Promise<T> {
+    const response = await this.request(
+      this.buildUrlString(url, params),
+      {
+        ...config,
+        method: "PUT",
+        body: this.formatBody(body),
+      }
+    );
+    if (!response.ok) await this.handleError(response);
+
+    return response.json();
+  }
+
+  public async patch<T, K extends object>(
+    url: string,
+    { body, params, ...config }: RequestParams<K>
+  ): Promise<T> {
+    const response = await this.request(
+      this.buildUrlString(url, params),
+      {
+        ...config,
+        method: "PATCH",
+        body: this.formatBody(body),
+      }
+    );
+    if (!response.ok) await this.handleError(response);
+
+    return response.json();
+  }
+
+  public async delete<T>(
+    url: string,
+    { params, ...config }: Omit<RequestParams, "body">
+  ): Promise<T> {
+    const response = await this.request(
+      this.buildUrlString(url, params),
+      {
+        ...config,
+        method: "DELETE",
+      }
+    );
+
     if (!response.ok) await this.handleError(response);
 
     return response.json();
