@@ -16,17 +16,6 @@ A lightweight and flexible TypeScript API wrapper around the native `fetch` func
 npm install your-package-name
 ```
 
-## Structure
-
-```bash
-src/
-├── api/
-│ ├── index.ts // API class
-│ ├── utils.ts // Query string builder
-│ └── types.ts // QueryParams type
-
-```
-
 ## Usage:
 
 1. Create an API instance
