@@ -1,0 +1,30 @@
+{
+  "name": "fetch-api-package",
+  "version": "1.0.0",
+  "description": "A simple npm package built with TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"No tests yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/my-awesome-package.git"
+  },
+  "keywords": [
+    "typescript",
+    "npm",
+    "example",
+    "fetch"
+  ],
+  "author": "Andrii Valenko <andreyvalenko@gmail.com>",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
