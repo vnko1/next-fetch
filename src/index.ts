@@ -105,7 +105,7 @@ export default class Api {
     const data = (await response.json()) as T;
 
     return this.interceptors?.onResponse
-      ? this.interceptors.onResponse<T>(response, data)
+      ? this.interceptors.onResponse(response, data)
       : data;
   }
 
