@@ -40,7 +40,9 @@ export default class Api {
 
   private formatBody(body?: FormData | unknown | null) {
     if (!body) return null;
-    return body instanceof FormData ? body : JSON.stringify(body);
+    return typeof FormData !== "undefined" && body instanceof FormData
+      ? body
+      : JSON.stringify(body);
   }
 
   private async handleError(response: Response): Promise<never> {
