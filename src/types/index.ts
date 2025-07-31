@@ -1,15 +1,15 @@
-export type OnRequestInterceptor = (
-  config: FetchRequestInit & { url: string }
-) => Promise<typeof config> | typeof config;
+import { InterceptorManager } from "../services";
 
-export type OnResponseInterceptor = <T>(
-  response: Response,
-  data: T
-) => Promise<T> | T;
+interface NextFetchReqConfig {
+  revalidate?: false | 0 | number;
+  tags?: string[];
+}
+
+export type Interceptor<T> = (value: T) => T | Promise<T>;
 
 export interface Interceptors {
-  onRequest?: OnRequestInterceptor;
-  onResponse?: OnResponseInterceptor;
+  request: InterceptorManager<FetchRequestInit>;
+  response: InterceptorManager<Response>;
 }
 
 export type QueryParams = Record<
@@ -23,11 +23,6 @@ export type QueryParams = Record<
 >;
 
 export type Methods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-
-interface NextFetchReqConfig {
-  revalidate?: false | 0 | number;
-  tags?: string[];
-}
 
 export interface FetchRequestInit extends RequestInit {
   next?: NextFetchReqConfig;

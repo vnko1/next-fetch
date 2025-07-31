@@ -1,3 +1,4 @@
+import { InterceptorManager } from "./services";
 import {
   ApiConstructor,
   FetchRequestInit,
@@ -12,7 +13,7 @@ export default class Api {
   private readonly baseErrorMessage: string = "HTTP error!";
   private readonly baseUrl: string;
   private readonly initConfig: Omit<FetchRequestInit, "body"> = {};
-  private readonly interceptors?: Interceptors;
+  public readonly interceptors: Interceptors;
 
   static create(data: ApiConstructor) {
     return new this(data);
@@ -25,7 +26,11 @@ export default class Api {
   }: ApiConstructor) {
     this.baseUrl = baseUrl;
     this.initConfig = initConfig;
-    this.interceptors = interceptors;
+
+    this.interceptors = {
+      request: new InterceptorManager<FetchRequestInit>(),
+      response: new InterceptorManager<Response>(),
+    };
   }
 
   private formatUrl(url: string) {
@@ -45,6 +50,18 @@ export default class Api {
       : JSON.stringify(body);
   }
 
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (response.status === 204) return null as T;
+    const contentType = response.headers.get("Content-Type") || "";
+
+    if (contentType.includes("application/json")) {
+      return response.json();
+    } else if (contentType.includes("text/")) {
+      return response.text() as T;
+    }
+    return response.blob() as T;
+  }
+
   private async handleError(response: Response): Promise<never> {
     const error = await response.json();
     let errorString = `${this.baseErrorMessage} status:${response.status}`;
@@ -61,7 +78,7 @@ export default class Api {
       "method" | "cache" | "next" | "headers" | "body"
     >
   ) {
-    const fetchConfig = {
+    let fetchConfig: FetchRequestInit = {
       ...this.initConfig,
       ...config,
       headers: {
@@ -72,17 +89,24 @@ export default class Api {
         ...config?.headers,
       },
     };
-    const interceptedConfig = this.interceptors?.onRequest
-      ? await this.interceptors.onRequest({ ...fetchConfig, url })
-      : fetchConfig;
 
-    return fetch(url, interceptedConfig);
+    for (const interceptor of this.interceptors.request.getAll()) {
+      fetchConfig = await interceptor(fetchConfig);
+    }
+
+    const response = await fetch(url, fetchConfig);
+
+    for (const interceptor of this.interceptors.response.getAll()) {
+      await interceptor(response);
+    }
+
+    return response;
   }
 
   private async send<T, K extends object>(
     method: Methods,
     url: string,
-    { body = null, params, ...config }: RequestParams<K>
+    { body = null, params, ...config }: RequestParams<K> = {}
   ): Promise<T> {
     const prepareBody =
       method === "GET" || method === "DELETE"
@@ -100,13 +124,7 @@ export default class Api {
 
     if (!response.ok) await this.handleError(response);
 
-    if (response.status === 204) return {} as T;
-
-    const data = (await response.json()) as T;
-
-    return this.interceptors?.onResponse
-      ? this.interceptors.onResponse(response, data)
-      : data;
+    return this.handleResponse<T>(response);
   }
 
   public async get<T>(
