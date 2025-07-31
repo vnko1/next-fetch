@@ -23,11 +23,8 @@ npm install @andreyvalenko/next-fetch
 ```bash
 import Api from './api';
 
-const api = new Api({
+const api =  Api.create({
   baseUrl: 'https://api.example.com',
-  config: {
-    cache: 'no-store', // Optional global fetch config
-  },
 });
 
 ```
