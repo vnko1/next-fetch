@@ -1,19 +1,31 @@
 import {
   ApiConstructor,
-  IRequestInit,
-  QueryParams,
+  FetchRequestInit,
   RequestParams,
+  QueryParams,
+  Methods,
+  Interceptors,
 } from "./types";
 import buildQueryString from "./utils";
 
 export default class Api {
   private readonly baseErrorMessage: string = "HTTP error!";
   private readonly baseUrl: string;
-  private readonly initConfig: Omit<IRequestInit, "body"> = {};
+  private readonly initConfig: Omit<FetchRequestInit, "body"> = {};
+  private readonly interceptors?: Interceptors;
 
-  constructor({ baseUrl, ...initConfig }: ApiConstructor) {
+  static create(data: ApiConstructor) {
+    return new this(data);
+  }
+
+  private constructor({
+    baseUrl,
+    interceptors,
+    ...initConfig
+  }: ApiConstructor) {
     this.baseUrl = baseUrl;
-    if (initConfig) this.initConfig = initConfig;
+    this.initConfig = initConfig;
+    this.interceptors = interceptors;
   }
 
   private formatUrl(url: string) {
@@ -26,6 +38,11 @@ export default class Api {
     return `${this.baseUrl}/${this.formatUrl(url)}${queryString}`;
   }
 
+  private formatBody(body?: FormData | unknown | null) {
+    if (!body) return null;
+    return body instanceof FormData ? body : JSON.stringify(body);
+  }
+
   private async handleError(response: Response): Promise<never> {
     const error = await response.json();
     let errorString = `${this.baseErrorMessage} status:${response.status}`;
@@ -35,18 +52,14 @@ export default class Api {
     throw new Error(errorString);
   }
 
-  private formatBody(body: unknown) {
-    return body instanceof FormData ? body : JSON.stringify(body);
-  }
-
-  private request(
+  private async request(
     url: string,
     config: Pick<
-      IRequestInit,
+      FetchRequestInit,
       "method" | "cache" | "next" | "headers" | "body"
     >
   ) {
-    return fetch(url, {
+    const fetchConfig = {
       ...this.initConfig,
       ...config,
       headers: {
@@ -56,91 +69,76 @@ export default class Api {
         ...this.initConfig?.headers,
         ...config?.headers,
       },
-    });
+    };
+    const interceptedConfig = this.interceptors?.onRequest
+      ? await this.interceptors.onRequest({ ...fetchConfig, url })
+      : fetchConfig;
+
+    return fetch(url, interceptedConfig);
   }
 
-  public async get<T>(
+  private async send<T, K extends object>(
+    method: Methods,
     url: string,
-    { params, ...config }: Omit<RequestParams, "body">
+    { body = null, params, ...config }: RequestParams<K>
   ): Promise<T> {
+    const prepareBody =
+      method === "GET" || method === "DELETE"
+        ? {}
+        : { body: this.formatBody(body) };
+
     const response = await this.request(
       this.buildUrlString(url, params),
       {
         ...config,
-        method: "GET",
+        method,
+        ...prepareBody,
       }
     );
 
     if (!response.ok) await this.handleError(response);
 
-    return response.json();
+    if (response.status === 204) return {} as T;
+
+    const data = (await response.json()) as T;
+
+    return this.interceptors?.onResponse
+      ? this.interceptors.onResponse<T>(response, data)
+      : data;
+  }
+
+  public async get<T>(
+    url: string,
+    config: Omit<RequestParams, "body">
+  ): Promise<T> {
+    return this.send("GET", url, config);
   }
 
   public async post<T, K extends object>(
     url: string,
     { body, params, ...config }: RequestParams<K>
   ): Promise<T> {
-    const response = await this.request(
-      this.buildUrlString(url, params),
-      {
-        ...config,
-        method: "POST",
-        body: this.formatBody(body),
-      }
-    );
-    if (!response.ok) await this.handleError(response);
-
-    return response.json();
+    return this.send("POST", url, config);
   }
 
   public async put<T, K extends object>(
     url: string,
     { body, params, ...config }: RequestParams<K>
   ): Promise<T> {
-    const response = await this.request(
-      this.buildUrlString(url, params),
-      {
-        ...config,
-        method: "PUT",
-        body: this.formatBody(body),
-      }
-    );
-    if (!response.ok) await this.handleError(response);
-
-    return response.json();
+    return this.send("PUT", url, config);
   }
 
   public async patch<T, K extends object>(
     url: string,
     { body, params, ...config }: RequestParams<K>
   ): Promise<T> {
-    const response = await this.request(
-      this.buildUrlString(url, params),
-      {
-        ...config,
-        method: "PATCH",
-        body: this.formatBody(body),
-      }
-    );
-    if (!response.ok) await this.handleError(response);
-
-    return response.json();
+    return this.send("PATCH", url, config);
   }
 
   public async delete<T>(
     url: string,
     { params, ...config }: Omit<RequestParams, "body">
   ): Promise<T> {
-    const response = await this.request(
-      this.buildUrlString(url, params),
-      {
-        ...config,
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) await this.handleError(response);
-
-    return response.json();
+    return this.send("DELETE", url, config);
   }
 }
