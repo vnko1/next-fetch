@@ -129,35 +129,35 @@ export default class Api {
 
   public async get<T>(
     url: string,
-    config: Omit<RequestParams, "body">
+    config: Omit<RequestParams, "body"> = {}
   ): Promise<T> {
     return this.send("GET", url, config);
   }
 
   public async post<T, K extends object>(
     url: string,
-    config: RequestParams<K>
+    config: RequestParams<K> = {}
   ): Promise<T> {
     return this.send("POST", url, config);
   }
 
   public async put<T, K extends object>(
     url: string,
-    config: RequestParams<K>
+    config: RequestParams<K> = {}
   ): Promise<T> {
     return this.send("PUT", url, config);
   }
 
   public async patch<T, K extends object>(
     url: string,
-    config: RequestParams<K>
+    config: RequestParams<K> = {}
   ): Promise<T> {
     return this.send("PATCH", url, config);
   }
 
   public async delete<T>(
     url: string,
-    config: Omit<RequestParams, "body">
+    config: Omit<RequestParams, "body"> = {}
   ): Promise<T> {
     return this.send("DELETE", url, config);
   }
