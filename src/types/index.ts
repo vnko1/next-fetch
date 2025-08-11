@@ -4,13 +4,18 @@ interface NextFetchReqConfig {
   revalidate?: false | 0 | number;
   tags?: string[];
 }
-
-export type Interceptor<T> = (value: T) => T | Promise<T>;
+export interface IInterceptorManager<T> {
+  use(interceptor: Interceptor<T>): number;
+  eject(id: number): void;
+  getAll(): Interceptor<T>[];
+}
 
 export interface Interceptors {
-  request: InterceptorManager<FetchRequestInit>;
-  response: InterceptorManager<Response>;
+  request: IInterceptorManager<FetchRequestInit>;
+  response: IInterceptorManager<Response>;
 }
+
+export type Interceptor<T> = (value: T) => T | Promise<T>;
 
 export type QueryParams = Record<
   string,

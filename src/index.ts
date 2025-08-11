@@ -27,7 +27,7 @@ export default class Api {
     this.baseUrl = baseUrl;
     this.initConfig = initConfig;
 
-    this.interceptors = {
+    this.interceptors = interceptors ?? {
       request: new InterceptorManager<FetchRequestInit>(),
       response: new InterceptorManager<Response>(),
     };
@@ -39,8 +39,12 @@ export default class Api {
   }
 
   private buildUrlString(url: string, params?: QueryParams) {
-    const queryString = params ? `?${buildQueryString(params)}` : "";
-    return `${this.baseUrl}/${this.formatUrl(url)}${queryString}`;
+    const u = new URL(
+      this.formatUrl(url),
+      this.baseUrl.endsWith("/") ? this.baseUrl : this.baseUrl + "/"
+    );
+    const qs = params ? buildQueryString(params) : "";
+    return qs ? `${u.toString()}?${qs}` : u.toString();
   }
 
   private formatBody(body?: FormData | unknown | null) {
@@ -63,12 +67,16 @@ export default class Api {
   }
 
   private async handleError(response: Response): Promise<never> {
-    const error = await response.json();
-    let errorString = `${this.baseErrorMessage} status:${response.status}`;
-    if (error.error && error.error.message)
-      errorString += ` ${error.error.message}`;
-    else if (error.message) errorString += ` ${error.message}`;
-    throw new Error(errorString);
+    let msg = `${this.baseErrorMessage} status:${response.status}`;
+    try {
+      const data = await response.clone().json();
+      const text = data?.error?.message ?? data?.message;
+      if (text) msg += ` ${text}`;
+    } catch {
+      const text = await response.text().catch(() => "");
+      if (text) msg += ` ${text.slice(0, 500)}`;
+    }
+    throw new Error(msg);
   }
 
   private async request(
@@ -78,13 +86,14 @@ export default class Api {
       "method" | "cache" | "next" | "headers" | "body"
     >
   ) {
+    const hasBody = !!config.body;
     let fetchConfig: FetchRequestInit = {
       ...this.initConfig,
       ...config,
       headers: {
-        ...(config.body instanceof FormData
-          ? {}
-          : { "Content-Type": "application/json" }),
+        ...(hasBody && !(config.body instanceof FormData)
+          ? { "Content-Type": "application/json" }
+          : {}),
         ...this.initConfig?.headers,
         ...config?.headers,
       },
@@ -94,10 +103,10 @@ export default class Api {
       fetchConfig = await interceptor(fetchConfig);
     }
 
-    const response = await fetch(url, fetchConfig);
+    let response = await fetch(url, fetchConfig);
 
     for (const interceptor of this.interceptors.response.getAll()) {
-      await interceptor(response);
+      response = await interceptor(response);
     }
 
     return response;
