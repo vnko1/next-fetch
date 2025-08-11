@@ -1,7 +1,5 @@
-import { InterceptorManager } from "../services";
-
 interface NextFetchReqConfig {
-  revalidate?: false | 0 | number;
+  revalidate?: false | number;
   tags?: string[];
 }
 export interface IInterceptorManager<T> {
