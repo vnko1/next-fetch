@@ -33,15 +33,18 @@ export default class Api {
     };
   }
 
-  private formatUrl(url: string) {
+  private formatURL(url: string) {
     if (url.startsWith("/")) return url.replace(/^\/+/, "");
     return url;
   }
 
   private buildURLString(url: string, params?: QueryParams) {
+    if (!this.baseURL)
+      throw new Error(`Invalid url: "${this.baseURL}"`);
+
     const u = new URL(
-      this.formatUrl(url),
-      this.baseURL.endsWith("/") ? this.baseURL : this.baseURL + "/"
+      this.formatURL(url),
+      this.baseURL?.endsWith("/") ? this.baseURL : this.baseURL + "/"
     );
     const qs = params ? buildQueryString(params) : "";
     return qs ? `${u.toString()}?${qs}` : u.toString();
