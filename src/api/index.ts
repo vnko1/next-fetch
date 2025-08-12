@@ -5,6 +5,7 @@ import {
   QueryParams,
   Methods,
   Interceptors,
+  HeadersObject,
 } from "../types";
 import { HttpError, InterceptorManager } from "../services";
 import buildQueryString from "../utils";
@@ -104,6 +105,11 @@ export default class Api {
     );
   }
 
+  private hasHeader(obj: Record<string, string>, name: string) {
+    const lower = name.toLowerCase();
+    return Object.keys(obj).some((k) => k.toLowerCase() === lower);
+  }
+
   private async request(
     url: string,
     config: Pick<
@@ -111,6 +117,10 @@ export default class Api {
       "method" | "cache" | "next" | "headers" | "body"
     >
   ) {
+    const headersObj: HeadersObject = {
+      ...(this.initConfig.headers ?? {}),
+      ...(config.headers ?? {}),
+    };
     const isJsonBody =
       config.body != null &&
       !(config.body instanceof FormData) &&
@@ -118,32 +128,34 @@ export default class Api {
       !(config.body instanceof ArrayBuffer) &&
       !(config.body instanceof URLSearchParams);
 
-    const headers = new Headers(
-      this.initConfig.headers as HeadersInit | undefined
-    );
-    if (isJsonBody && !headers.has("content-type")) {
-      headers.set("Content-Type", "application/json");
+    if (isJsonBody && !this.hasHeader(headersObj, "content-type")) {
+      headersObj["Content-Type"] = "application/json";
     }
-    if (!headers.has("accept")) {
-      headers.set("Accept", "application/json, text/plain, */*");
-    }
-    if (config.headers) {
-      new Headers(config.headers as HeadersInit).forEach((v, k) =>
-        headers.set(k, v)
-      );
+    if (!this.hasHeader(headersObj, "accept")) {
+      headersObj["Accept"] = "application/json, text/plain, */*";
     }
 
     let fetchConfig: FetchRequestInit = {
       ...this.initConfig,
       ...config,
-      headers,
+      headers: headersObj,
     };
 
     for (const interceptor of this.interceptors.request.getAll()) {
       fetchConfig = await interceptor(fetchConfig);
     }
 
-    let response = await fetch(url, fetchConfig);
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(fetchConfig.headers ?? {})) {
+      headers.set(k, v);
+    }
+
+    const finalConfig: RequestInit = {
+      ...fetchConfig,
+      headers,
+    };
+
+    let response = await fetch(url, finalConfig);
 
     for (const interceptor of this.interceptors.response.getAll()) {
       const maybe = await interceptor(response);

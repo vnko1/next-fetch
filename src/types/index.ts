@@ -2,19 +2,9 @@ interface NextFetchReqConfig {
   revalidate?: false | number | 0;
   tags?: string[];
 }
-export interface IInterceptorManager<T> {
-  use(interceptor: Interceptor<T>): number;
-  eject(id: number): void;
-  getAll(): Interceptor<T>[];
-}
 
-export interface Interceptors {
-  request: IInterceptorManager<FetchRequestInit>;
-  response: IInterceptorManager<Response>;
-}
-
+export type HeadersObject = Record<string, string>;
 export type Interceptor<T> = (value: T) => T | Promise<T>;
-
 export type QueryParams = Record<
   string,
   | string
@@ -24,11 +14,23 @@ export type QueryParams = Record<
   | object
   | (string | number | boolean | undefined | object)[]
 >;
-
 export type Methods = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
-export interface FetchRequestInit extends RequestInit {
+export interface IInterceptorManager<T> {
+  use(interceptor: Interceptor<T>): number;
+  eject(id: number): void;
+  getAll(): Interceptor<T>[];
+}
+
+export interface FetchRequestInit
+  extends Omit<RequestInit, "header"> {
+  headers?: HeadersObject;
   next?: NextFetchReqConfig;
+}
+
+export interface Interceptors {
+  request: IInterceptorManager<FetchRequestInit>;
+  response: IInterceptorManager<Response>;
 }
 
 export interface RequestParams<T extends object = {}>
