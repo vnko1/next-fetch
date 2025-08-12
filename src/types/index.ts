@@ -1,5 +1,5 @@
 interface NextFetchReqConfig {
-  revalidate?: false | number;
+  revalidate?: false | number | 0;
   tags?: string[];
 }
 export interface IInterceptorManager<T> {
@@ -40,6 +40,6 @@ export interface RequestParams<T extends object = {}>
 
 export interface ApiConstructor
   extends Omit<FetchRequestInit, "method" | "body"> {
-  baseUrl: string;
+  baseURL: string;
   interceptors?: Interceptors;
 }
