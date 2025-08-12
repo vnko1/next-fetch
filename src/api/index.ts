@@ -5,7 +5,6 @@ import {
   QueryParams,
   Methods,
   Interceptors,
-  HeadersObject,
 } from "../types";
 import { HttpError, InterceptorManager } from "../services";
 import buildQueryString from "../utils";
@@ -61,53 +60,43 @@ export default class Api {
     return JSON.stringify(b);
   }
 
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (response.status === 204) return null as T;
-    const ct = response.headers.get("Content-Type") || "";
+  private async handleResponse<T>(res: Response): Promise<T> {
+    if (res.status === 204) return null as T;
+    const ct = res.headers.get("Content-Type") || "";
 
     if (/\bjson\b/i.test(ct)) {
-      return response.json();
+      return res.json();
     }
     if (ct.startsWith("text/")) {
-      return response.text() as T;
+      return res.text() as T;
     }
-    return response.blob() as T;
+    return res.blob() as T;
   }
 
-  private async handleError(response: Response): Promise<never> {
+  private async handleError(res: Response): Promise<never> {
     let parsedBody: unknown = undefined;
     let msg = this.baseErrorMessage;
 
     try {
-      const ct = response.headers.get("Content-Type") || "";
+      const ct = res.headers.get("Content-Type") || "";
       if (/\bjson\b/i.test(ct)) {
-        parsedBody = await response.clone().json();
+        parsedBody = await res.clone().json();
         const text =
           (parsedBody as any)?.error?.message ??
           (parsedBody as any)?.message;
         if (text) msg += ` ${text}`;
       } else {
-        const text = await response.clone().text();
+        const text = await res.clone().text();
         if (text) msg += ` ${text.slice(0, 500)}`;
         parsedBody = text;
       }
     } catch {
-      const text = await response.text().catch(() => "");
+      const text = await res.text().catch(() => "");
       if (text) msg += ` ${text.slice(0, 500)}`;
       parsedBody = text || undefined;
     }
 
-    throw new HttpError(
-      response.status,
-      response.url,
-      msg,
-      parsedBody
-    );
-  }
-
-  private hasHeader(obj: Record<string, string>, name: string) {
-    const lower = name.toLowerCase();
-    return Object.keys(obj).some((k) => k.toLowerCase() === lower);
+    throw new HttpError(res.status, res.url, msg, parsedBody);
   }
 
   private async request(
@@ -117,10 +106,6 @@ export default class Api {
       "method" | "cache" | "next" | "headers" | "body"
     >
   ) {
-    const headersObj: HeadersObject = {
-      ...(this.initConfig.headers ?? {}),
-      ...(config.headers ?? {}),
-    };
     const isJsonBody =
       config.body != null &&
       !(config.body instanceof FormData) &&
@@ -128,34 +113,32 @@ export default class Api {
       !(config.body instanceof ArrayBuffer) &&
       !(config.body instanceof URLSearchParams);
 
-    if (isJsonBody && !this.hasHeader(headersObj, "content-type")) {
-      headersObj["Content-Type"] = "application/json";
+    const headers = new Headers(
+      this.initConfig.headers as HeadersInit | undefined
+    );
+    if (isJsonBody && !headers.has("content-type")) {
+      headers.set("Content-Type", "application/json");
     }
-    if (!this.hasHeader(headersObj, "accept")) {
-      headersObj["Accept"] = "application/json, text/plain, */*";
+    if (!headers.has("accept")) {
+      headers.set("Accept", "application/json, text/plain, */*");
+    }
+    if (config.headers) {
+      new Headers(config.headers as HeadersInit).forEach((v, k) =>
+        headers.set(k, v)
+      );
     }
 
     let fetchConfig: FetchRequestInit = {
       ...this.initConfig,
       ...config,
-      headers: headersObj,
+      headers,
     };
 
     for (const interceptor of this.interceptors.request.getAll()) {
       fetchConfig = await interceptor(fetchConfig);
     }
 
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(fetchConfig.headers ?? {})) {
-      headers.set(k, v);
-    }
-
-    const finalConfig: RequestInit = {
-      ...fetchConfig,
-      headers,
-    };
-
-    let response = await fetch(url, finalConfig);
+    let response = await fetch(url, fetchConfig);
 
     for (const interceptor of this.interceptors.response.getAll()) {
       const maybe = await interceptor(response);

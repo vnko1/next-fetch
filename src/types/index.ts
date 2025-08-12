@@ -3,7 +3,6 @@ interface NextFetchReqConfig {
   tags?: string[];
 }
 
-export type HeadersObject = Record<string, string>;
 export type Interceptor<T> = (value: T) => T | Promise<T>;
 export type QueryParams = Record<
   string,
@@ -22,9 +21,7 @@ export interface IInterceptorManager<T> {
   getAll(): Interceptor<T>[];
 }
 
-export interface FetchRequestInit
-  extends Omit<RequestInit, "header"> {
-  headers?: HeadersObject;
+export interface FetchRequestInit extends RequestInit {
   next?: NextFetchReqConfig;
 }
 
